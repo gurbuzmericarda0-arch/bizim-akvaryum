@@ -1,0 +1,14 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "aq": {
+      "bizim-akvaryum-7f3k9q2m4x": {
+        ".read": true,
+        ".write": true,
+        "ev": { ".indexOn": ["ts"] },
+        "log": { ".indexOn": ["at"] }
+      }
+    }
+  }
+}

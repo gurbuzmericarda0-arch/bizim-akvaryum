@@ -1,0 +1,47 @@
+{
+ "fish": {
+  "silverblue": {
+   "name": "Silver Blue",
+   "color": "#b8a2f4",
+   "pattern": "g_silberblau",
+   "eaten": 5,
+   "size": 0.975,
+   "full": 0.8,
+   "fedAt": 0,
+   "born": 1795123600000,
+   "lastPet": 0
+  },
+  "schwarz": {
+   "name": "Schwarz",
+   "color": "#232a40",
+   "pattern": "g_schwarz",
+   "eaten": 4,
+   "size": 0.94,
+   "full": 0.8,
+   "fedAt": 0,
+   "born": 1795123600001,
+   "lastPet": 0
+  }
+ },
+ "tank": {
+  "main": {
+   "pearls": 16,
+   "light": "day",
+   "filter": 0.6,
+   "heatOn": true,
+   "heatT": 25,
+   "heatFrom": 25,
+   "heatAt": 0,
+   "lastCleaned": 0,
+   "plantedAt": 0,
+   "fert": 1,
+   "fertAt": 0
+  }
+ },
+ "surprise": {
+  "main": {
+   "text": "Sürprizzz yıldızım!\n\nBu akvaryum ikimizin. Senin Silver Blue'n da benim Schwarz'ım da burada.\n\nEn sevdiğin deniz yıldızı ve deniz anası da burada seni bekliyor. Yıldıza dokun, senin için parlasın.\n\nBalıklarımızı birlikte besleyip büyütelim mi?\n\nBenim de en sevdiğim şey sensin, her şeyden önce.",
+   "at": 1795123600000
+  }
+ }
+}
