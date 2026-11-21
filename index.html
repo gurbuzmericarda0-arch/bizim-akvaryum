@@ -104,6 +104,13 @@ input[type=text]{font:inherit;color:var(--foam);background:var(--abyss);border:1
 .tlabel b{color:var(--foam)}
 .big{font-family:var(--display);font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 input[type=range]{width:100%;accent-color:var(--coral)}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.wt{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:10px;background:var(--abyss);border:1px solid var(--line)}
+.wt[data-state="warn"]{border-color:var(--pearl)} .wt[data-state="bad"]{border-color:var(--coral);background:#ff7a6b1a}
+.wv{display:flex;align-items:center;gap:8px;font-family:var(--display);font-size:17px;font-variant-numeric:tabular-nums}
+.chip{width:16px;height:16px;border-radius:50%;display:inline-block;border:1px solid #fff4;flex:none}
+.wsum{margin:0;font-size:13.5px;font-weight:600} .wsum[data-state="ok"]{color:var(--kelp)} .wsum[data-state="warn"]{color:var(--pearl)} .wsum[data-state="bad"]{color:var(--coral)}
+.deadrow{opacity:.6}
 select{font:inherit;color:var(--foam);background:var(--abyss);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
 textarea{font:inherit;color:var(--foam);background:var(--abyss);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%;min-height:110px;resize:vertical;box-sizing:border-box}
 #newPreview{width:100%;height:120px;border-radius:12px;background:linear-gradient(#22809a,#0f4a5e);display:block}
@@ -162,6 +169,23 @@ textarea{font:inherit;color:var(--foam);background:var(--abyss);border:1px solid
           <div class="tcell"><span class="tlabel">Bitki büyümesi</span><span class="big" id="plantPct">0%</span><button id="btnFert">Gübre ver</button><span class="note" id="fertNote"></span></div>
         </div>
       </section>
+      <section class="card" id="waterCard">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="label">Su testi</span>
+          <button id="btnHard" aria-pressed="true">Zorluk: Gerçekçi</button>
+        </div>
+        <div class="wgrid">
+          <div class="wt"><span class="tlabel">Amonyak (NH₃)</span><span class="wv"><i class="chip" id="wNh3c"></i><b id="wNh3">0</b></span></div>
+          <div class="wt"><span class="tlabel">Nitrit (NO₂)</span><span class="wv"><i class="chip" id="wNo2c"></i><b id="wNo2">0</b></span></div>
+          <div class="wt"><span class="tlabel">Nitrat (NO₃)</span><span class="wv"><i class="chip" id="wNo3c"></i><b id="wNo3">0</b></span></div>
+          <div class="wt"><span class="tlabel">pH</span><span class="wv"><b id="wPh">7.2</b></span></div>
+          <div class="wt"><span class="tlabel">Oksijen</span><span class="wv"><b id="wO2">8</b></span></div>
+          <div class="wt"><span class="tlabel">Faydalı bakteri</span><span class="wv"><b id="wBac">80%</b></span></div>
+        </div>
+        <p class="wsum" id="wSummary"></p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="primary" id="btnWc">%25 su değiştir</button><span class="note" id="wcNote"></span></div>
+        <span class="note">Balıklar amonyak üretir, faydalı bakteriler onu nitrite, sonra nitrata çevirir. Yenmeyen yem dipte çürür. Nitratı su değişimi ve bitkiler düşürür.</span>
+      </section>
       <div class="status">
         <span class="meter">Cam temizliği <span class="bar" id="cleanBar"><i></i></span> <b id="cleanPct">100%</b></span>
         <span id="tankMood"></span>
@@ -181,9 +205,13 @@ textarea{font:inherit;color:var(--foam);background:var(--abyss);border:1px solid
             <dt>Tokluk</dt><dd><span class="meter"><span class="bar" id="selFullBar"><i></i></span><span id="selFull"></span></span></dd>
             <dt>Ruh hali</dt><dd id="selMood"></dd>
             <dt>Yediği yem</dt><dd id="selEaten"></dd>
+            <dt>Sağlık</dt><dd><span class="meter"><span class="bar" id="selHpBar"><i></i></span><span id="selHp"></span></span></dd>
+            <dt>Cinsiyet</dt><dd id="selSex"></dd>
+            <dt>Durum</dt><dd id="selState"></dd>
             <dt>Bilgi</dt><dd id="selFact" style="font-weight:600;font-size:13px"></dd>
           </dl>
           <div class="row"><button class="primary" id="selPet"><svg class="i" viewBox="0 0 16 16"><path d="M8 14S2 10 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4-6 8-6 8z" fill="currentColor"/></svg>Sev</button><button class="danger" id="selRemove">Akvaryumdan çıkar</button></div>
+          <div class="row" id="selMedRow" hidden><button id="selMed">İlaç ver (5 inci)</button><span class="note">Beyaz nokta için: ilaç + 28°C su, yaklaşık 1 günde iyileşir.</span></div>
           <div class="confirm" id="selConfirm" hidden>Emin misin? <button class="danger" id="selRemoveYes">Evet, çıkar</button><button id="selRemoveNo">Vazgeç</button></div>
           <div class="note">İkiniz aynı balığı 3 saniye içinde severseniz bonus inci kazanırsınız.</div>
         </div>
@@ -201,6 +229,7 @@ textarea{font:inherit;color:var(--foam);background:var(--abyss);border:1px solid
             <span class="note" id="newFact"></span>
             <canvas id="newPreview" aria-label="Seçilen balığın önizlemesi"></canvas>
             <span class="note">Listedeki her tür 22–26°C tatlı suda lepisteslerle barış içinde yaşar.</span>
+            <div class="seg" role="group" aria-label="Cinsiyet" id="sexSeg"><button data-sex="m" aria-pressed="true">Erkek</button><button data-sex="f" aria-pressed="false">Dişi</button></div>
             <div class="swatches" id="newColors" hidden></div>
             <button class="primary" id="newAdd">Ekle</button>
             <span class="note" id="newNote"></span>
@@ -248,7 +277,7 @@ const FULL_MS = 10 * 3600e3;      // tokluk 1 -> 0 in 10 hours
 const DIRTY_MS = 36 * 3600e3;     // glass clean -> dirty in 36 hours
 let SAND = 0.88; const TOP = 0.12;
 const COLORS = ["#ff8a3d","#ffcc4d","#ff6fa8","#5ab8ff","#9d7bff","#4fdc9a","#ff5a5a","#f2f2f2"];
-const MAX_FISH = 10, FISH_COST = 15;
+const MAX_FISH = 20, FISH_COST = 15;
 const now = () => Date.now();
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const $ = id => document.getElementById(id);
@@ -291,6 +320,7 @@ const fullness = f => clamp((f.full ?? 0) - (now() - (f.fedAt ?? 0)) / FULL_MS, 
 const cleanness = () => clamp(1 - (now() - (tank.lastCleaned ?? now())) / (DIRTY_MS*(0.6 + filterPow())), 0, 1);
 function stage(s){ return s < 0.9 ? "Yavru" : s < 1.4 ? "Genç" : s < 1.9 ? "Yetişkin" : "Dev"; }
 function mood(f){
+  if (f.sick) return "Hasta, beyaz nokta var"; if ((f.health ?? 100) < 40) return "Halsiz, su değerlerine bakın";
   const T = waterTemp(); if (T < 22) return "Su soğuk, üşüyor"; if (T > 29.5) return "Su çok sıcak, bunalmış";
   const fu = fullness(f);
   if (fu < 0.2) return "Çok aç";
@@ -474,6 +504,7 @@ const GUPPY = {
   g_mosaikrot:  { n:"Mosaik Rot", front:"#a4b4c4", rear:"#6a8ab0", tail:["#3a5aa0","#e8302a"], tp:"mosaic" },
   g_mosaikgrun: { n:"Mosaik Grün", front:"#b4c4a4", rear:"#7a9a6a", tail:["#336656","#7ad06a"], tp:"mosaic" },
   g_pigeon:     { n:"Pigeon Blood", front:"#f6e8e2", rear:"#e88a7a", tail:["#e4302a","#ff6a5a"], tp:"blotch" },
+  g_female:     { n:"Dişi lepistes", front:"#c9ccc2", rear:"#a9ad9e", tail:["#b9c4cc","#d8e2ea"], tp:"solid" },
   g_ananas:     { n:"Cobra Ananas", front:"#dccc94", rear:"#d8a040", cobra:true, tail:["#ee9e20","#ffd84a"], tp:"cobra" },
 };
 const SPECIES = Object.assign({ plain: "Japon balığı", stripes: "Palyaço balığı", spots: "Koi" },
@@ -493,7 +524,8 @@ function drawTag(f, s, x, y, L){
   ctx.font = "700 11.5px Nunito, system-ui, sans-serif"; ctx.textAlign = "center";
   ctx.fillStyle = isSel ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.6)"; ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 3;
   ctx.fillText(f.name, x, y - L*0.4 - 6);
-  if (fullness(f) < 0.2){ ctx.fillStyle = "#ffe2b8"; ctx.fillText("aç", x, y - L*0.4 - 19); }
+  const tagS = f.sick ? "hasta" : (f.health ?? 100) < 40 ? "halsiz" : fullness(f) < 0.2 ? "aç" : f.gravidAt ? "hamile" : "";
+  if (tagS){ ctx.fillStyle = f.sick || (f.health ?? 100) < 40 ? "#ff9a8a" : "#ffe2b8"; ctx.fillText(tagS, x, y - L*0.4 - 19); }
   ctx.shadowBlur = 0;
 }
 
@@ -860,7 +892,7 @@ function maybeAutoReveal(){
   let seen = null; try { seen = localStorage.getItem(seenKey()); } catch(e){}
   if (!seen) openSurprise(true);
 }
-function fishLen(f){ return clamp(f.size||0.6, 0.5, 2.4) * Math.min(W, H*1.5) * 0.12; }
+function fishLen(f){ return clamp(f.size||0.6, 0.3, 2.4) * Math.min(W, H*1.5) * 0.12; }
 
 function drawFish(f, s, t, id){
   if (sprites[f.pattern]) return drawSprite(f, s, t, id, sprites[f.pattern]);
@@ -1500,6 +1532,7 @@ function act(e){
     const y = clamp(p.y, 0.04, SAND - 0.05);
     const id = Math.random().toString(36).slice(2,9);
     dropFood(p.x, y, true, id); send("food", { id, x: p.x, y });
+    myDropped++; if (myId) queueWrite("feed/" + myId, { dropped: myDropped }, "set");
   } else { tapGlass(p.x, p.y); const rg = particles[particles.length - 1]; if (rg && rg.k === "ring"){ rg.x = scr.x; rg.y = scr.y; } send("tap", { x: p.x, y: p.y }); }
 }
 let lastPres = 0;
@@ -1546,6 +1579,13 @@ function renderSel(){
   $("selMood").textContent = mood(f);
   $("selEaten").textContent = (f.eaten||0) + " tane";
   $("selFact").textContent = speciesFact(f.pattern);
+  const hp = f.health ?? 100; setBar($("selHpBar"), hp/100); $("selHp").textContent = Math.round(hp) + "%";
+  $("selSex").textContent = isGuppy(f) ? (isFemale(f) ? "Dişi" : "Erkek") : "—";
+  const st = []; if (f.sick) st.push("Hasta: beyaz nokta" + (f.medAt && now() - f.medAt < 72*3600e3 ? " (tedavide)" : ""));
+  if (f.gravidAt) st.push("Hamile, ~" + Math.max(1, Math.ceil((f.gravidAt + 3*86400e3 - now())/86400e3)) + " gün sonra yavrular");
+  if ((f.size||0.6) < 0.5) st.push("Yavru");
+  $("selState").textContent = st.length ? st.join(" · ") : "Sağlıklı";
+  $("selMedRow").hidden = !f.sick;
 }
 function renderList(){
   const box = $("fishList"); box.textContent = "";
@@ -1557,10 +1597,14 @@ function renderList(){
     const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = fishDot(f);
     const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = f.name;
     const st = document.createElement("span"); st.className = "st"; st.textContent = stage(f.size||0.6);
-    const bar = document.createElement("span"); bar.className = "bar"; bar.style.width = "54px"; bar.appendChild(document.createElement("i")); setBar(bar, fullness(f));
+    const bar = document.createElement("span"); bar.className = "bar"; bar.style.width = "54px"; bar.title = "Sağlık"; bar.appendChild(document.createElement("i")); setBar(bar, (f.health ?? 100)/100);
+    if (f.sick) st.textContent = "Hasta"; else if (f.gravidAt) st.textContent = "Hamile";
     b.append(dot, nm, st, bar); b.onclick = () => select(id);
     box.appendChild(b);
   }
+  for (const id in deadFish){ const f = deadFish[id], row = document.createElement("div"); row.className = "fishrow deadrow";
+    const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = f.name + " (öldü)"; const rm = document.createElement("button"); rm.textContent = "Kaldır";
+    rm.onclick = () => { delete deadFish[id]; if (db) db.doc("fish/" + id).delete().catch(()=>{}); renderList(); }; row.append(nm, rm); box.appendChild(row); }
   updateAddNote();
 }
 function renderHud(){
@@ -1568,7 +1612,8 @@ function renderHud(){
   $("lightLbl").textContent = tank.light === "night" ? "Gündüz moduna geç" : "Gece moduna geç";
   const c = cleanness(); setBar($("cleanBar"), c); $("cleanPct").textContent = Math.round(c*100) + "%";
   const ids = Object.keys(fishData), hungry = ids.filter(id => fullness(fishData[id]) < 0.2).length;
-  $("tankMood").textContent = !ids.length ? "" : hungry ? `${hungry} balık aç, yem bekliyor` : c < 0.3 ? "Cam kirlendi, temizlemek iyi olur" : "Herkes keyifli";
+  const ww = waterNow(), sickN = ids.filter(id => fishData[id].sick).length;
+  $("tankMood").textContent = !ids.length ? "" : ww.nh3 > 0.25 ? "Amonyak tehlikeli, su değiştirin!" : sickN ? `${sickN} balık hasta` : hungry ? `${hungry} balık aç, yem bekliyor` : c < 0.3 ? "Cam kirlendi, temizlemek iyi olur" : "Herkes keyifli";
   updateAddNote();
 }
 function renderPeople(){
@@ -1590,7 +1635,7 @@ function renderLog(){
   for (const it of logItems.slice(0,20)){
     const li = document.createElement("li"), tm = document.createElement("time"), sp = document.createElement("span"), b = document.createElement("b");
     tm.textContent = fmtTime(it.at||0);
-    b.textContent = it.by === myId ? "Sen" : (it.by && names[it.by]) || "Partnerin";
+    b.textContent = it.by === "sys" ? "Akvaryum:" : it.by === myId ? "Sen" : (it.by && names[it.by]) || "Partnerin";
     sp.append(b, " " + String(it.text||"").slice(0,120));
     li.append(tm, sp); ul.appendChild(li);
   }
@@ -1622,7 +1667,7 @@ $("selRemoveYes").onclick = async () => {
 };
 
 // add fish form
-let newColor = COLORS[0], newPat = "g_silberblau";
+let newColor = COLORS[0], newPat = "g_silberblau", newSex = "m";
 { const sel = $("newSpecies"), og1 = document.createElement("optgroup"), og2 = document.createElement("optgroup");
   og1.label = "Lepistes"; og2.label = "Diğer balıklar";
   for (const [k, gp] of Object.entries(GUPPY)){ const o = document.createElement("option"); o.value = k; o.textContent = gp.n; og1.appendChild(o); }
@@ -1660,7 +1705,8 @@ $("newAdd").onclick = () => {
   const cost = addCost(); if (cost > (tank.pearls||0) || Object.keys(fishData).length >= MAX_FISH) return;
   if (!GUPPY[newPat] && !COMM[newPat]) return;
   const id = "f" + now().toString(36) + Math.random().toString(36).slice(2,5);
-  const f = { name: n, color: newColor, pattern: newPat, eaten: 0, size: 0.55, full: 0.5, fedAt: now(), born: now(), lastPet: 0 };
+  const pat = GUPPY[newPat] && newSex === "f" ? "g_female" : newPat;
+  const f = { name: n, color: newColor, pattern: pat, eaten: 0, size: 0.55, full: 0.5, fedAt: now(), born: now(), lastPet: 0, health: 100 };
   fishData[id] = f; if (db) queueWrite("fish/"+id, f, "set");
   if (cost) addPearls(-cost);
   addLog("add", `akvaryuma ${n} adında yeni bir balık ekledi`);
@@ -1675,6 +1721,136 @@ $("surpriseSave").onclick = async () => {
   if (db){ try { await db.doc("surprise/main").set({ text, at: now() }); $("surpriseNote").textContent = "Kaydedildi. O ilk açtığında hediye kutusu olarak görecek."; } catch(e){ $("surpriseNote").textContent = "Kaydedilemedi, birazdan tekrar dene."; } }
 };
 $("surprisePreview").onclick = () => { surprise.text = $("surpriseText").value.trim().slice(0,600); openSurprise(true); };
+
+// ---------- biology: nitrogen cycle, oxygen, pH, health, white-spot disease, breeding ----------
+// One online viewer (the "host", chosen by lowest peer id) integrates the tank in 10-minute steps
+// from the last saved moment to now and writes the results; everyone else only reads them.
+const WDEF = { nh3: 0.02, no2: 0.01, no3: 8, bac1: 0.85, bac2: 0.8, at: 0, eatenSeen: -1, droppedSeen: -1, wcAt: 0, wcPct: 0, wcApplied: 0, hard: true };
+let water = { ...WDEF, at: now() }, waterLoaded = false, deadFish = {};
+let myDropped = 0, feedTotals = {};
+const isHard = () => water.hard !== false;
+const tempAtT = t => { const tg = heatTarget(), from = tank.heatFrom ?? 25, at = tank.heatAt ?? 0; return tg + (from - tg)*Math.exp(-Math.max(0, t - at)/HEAT_TAU); };
+const fullAt = (f, t) => clamp((f.full ?? 0) - (t - (f.fedAt ?? 0))/FULL_MS, 0, 1);
+function oxygen(T, nfish){ return clamp(8.6 - (T - 20)*0.2 + filterPow()*1.3 + (tank.light === "night" ? -0.4 : 0.4) - nfish*0.07, 2, 9.5); }
+const phOf = no3 => clamp(7.6 - no3*0.012, 6.0, 7.8);
+function stressOf(w, T, O2, full){ let s = 0;
+  if (w.nh3 > 0.05) s += (w.nh3 - 0.05)*15; if (w.no2 > 0.1) s += (w.no2 - 0.1)*12; if (w.no3 > 40) s += (w.no3 - 40)*0.15;
+  if (T < 22) s += (22 - T)*2; if (T > 28.5) s += (T - 28.5)*2.5; if (O2 < 5) s += (5 - O2)*3; if (full > 2*86400e3) s += 1.5; return s; }
+const isFemale = f => f.pattern === "g_female";
+const isGuppy = f => !!GUPPY[f.pattern];
+function integrate(t1){
+  const w = { ...water }, t0 = w.at || t1, STEP = 10*60e3, n = Math.min(2016, Math.ceil((t1 - t0)/STEP));
+  const changes = {}, births = [], events = [];
+  // feeding input since the last run: eaten pellets leave a little waste, uneaten ones rot on the sand
+  const eaten = Object.values(fishData).reduce((a, f) => a + (f.eaten||0), 0) + Object.values(deadFish).reduce((a, f) => a + (f.eaten||0), 0);
+  const dropped = Object.values(feedTotals).reduce((a, v) => a + v, 0);
+  if (w.eatenSeen >= 0 && w.droppedSeen >= 0){ const de = Math.max(0, eaten - w.eatenSeen), dd = Math.max(0, dropped - w.droppedSeen); w.nh3 += (de*0.004 + Math.max(0, dd - de)*0.02)*(isHard() ? 1 : 0.4); }
+  w.eatenSeen = eaten; w.droppedSeen = dropped;
+  if (w.wcAt > (w.wcApplied || 0)){ const k = 1 - clamp(w.wcPct || 25, 5, 60)/100; w.nh3 *= k; w.no2 *= k; w.no3 *= k; w.wcApplied = w.wcAt; events.push(["wc", w.wcPct || 25]); }
+  if (n <= 0){ w.at = t1; return { w, changes, births, events }; }
+  const h = (t1 - t0)/3600e3/n, K = isHard() ? 1 : 0.4, fp = filterPow(), g = plantGrowth(), fl = 0.3 + 0.7*fp;
+  const fish = {}; for (const id in fishData) fish[id] = { ...fishData[id], health: fishData[id].health ?? 100 };
+  for (let i=0;i<n;i++){
+    const t = t0 + (i + 1)*(t1 - t0)/n, T = tempAtT(t), live = Object.entries(fish).filter(([,f]) => !f.dead);
+    const load = live.reduce((a, [,f]) => a + clamp(f.size||0.6, 0.3, 2.4), 0);
+    w.nh3 += 0.0025*load*K*h;
+    const c1 = Math.min(w.nh3, w.nh3*0.35*w.bac1*fl*h); w.nh3 -= c1; w.no2 += c1;
+    w.nh3 = Math.max(0, w.nh3 - 0.004*g*h);
+    const c2 = Math.min(w.no2, w.no2*0.3*w.bac2*fl*h); w.no2 -= c2; w.no3 += c2*4;
+    w.no3 = Math.max(0, w.no3 - 0.02*g*h);
+    w.bac1 = clamp(w.bac1 + (fp > 0 ? 0.015*(1 - w.bac1)*Math.min(1, w.nh3*8 + 0.2) : -0.03*w.bac1)*h, 0.05, 1);
+    w.bac2 = clamp(w.bac2 + (fp > 0 ? 0.015*(1 - w.bac2)*Math.min(1, w.no2*8 + 0.2) : -0.03*w.bac2)*h, 0.05, 1);
+    const O2 = oxygen(T, live.length), step = Math.floor(t/STEP);
+    const maleGuppy = live.some(([,f]) => isGuppy(f) && !isFemale(f) && (f.size||0.6) >= 0.7);
+    for (const [id, f] of live){
+      const starved = t - (f.fedAt || 0) - FULL_MS*(f.full || 0), s = stressOf(w, T, O2, starved)*K;
+      if (s < 0.5) f.health = Math.min(100, f.health + (fullAt(f, t) > 0.2 ? 1.2 : 0.3)*h); else f.health -= s*h;
+      if (!f.sick){ const p = ((s > 1 ? 0.004 : 0) + (T < 23 ? 0.003 : 0))*K; if (p && hash(id + ":ich:" + step) < p*h){ f.sick = true; f.sickAt = t; events.push(["sick", id]); } }
+      else { const treated = f.medAt && t - f.medAt < 72*3600e3; f.health -= (treated ? 0.3 : 1.0)*K*h;
+        if (treated && T >= 27 && t - f.medAt > 24*3600e3){ f.sick = false; f.sickAt = 0; events.push(["cured", id]); } }
+      if (f.health <= 0){ if (isHard()){ f.dead = true; f.diedAt = t; events.push(["dead", id]); continue; } f.health = 15; }
+      if (isFemale(f) && (f.size||0.6) >= 0.7){
+        if (!f.gravidAt && maleGuppy && f.health > 60 && T >= 23.5 && T <= 28.5 && hash(id + ":gr:" + step) < 0.01*h) { f.gravidAt = t; events.push(["gravid", id]); }
+        else if (f.gravidAt && t - f.gravidAt > 3*86400e3){
+          const fathers = live.filter(([,m]) => isGuppy(m) && !isFemale(m)).map(([,m]) => m.pattern), room = 20 - live.length - births.length;
+          const k = Math.min(room, 2 + Math.floor(hash(id + ":n:" + step)*3));
+          for (let j=0;j<k;j++){ const male = hash(id + ":s" + j + ":" + step) < 0.5 && fathers.length;
+            births.push({ id: "y" + Math.floor(t).toString(36) + j, mother: id, f: { name: (f.name.split(" ")[0] + " yavrusu " + (j+1)).slice(0,18), color: "#c9ccc2",
+              pattern: male ? fathers[Math.floor(hash(id + ":p" + j + step)*fathers.length)] : "g_female", eaten: 0, size: 0.35, full: 0.6, fedAt: t, born: t, lastPet: 0, health: 100 } }); }
+          f.gravidAt = 0; events.push(["birth", id, k]);
+        }
+      }
+    }
+  }
+  w.at = t1;
+  for (const id in fish){ const a = fishData[id], b = fish[id], ch = {};
+    if (Math.round(b.health) !== Math.round(a.health ?? 100)) ch.health = Math.round(b.health*10)/10;
+    for (const k of ["sick", "sickAt", "dead", "diedAt", "gravidAt"]) if ((b[k] || 0) !== (a[k] || 0)) ch[k] = b[k] || 0;
+    if (Object.keys(ch).length) changes[id] = ch; }
+  return { w, changes, births, events };
+}
+function amHost(){
+  if (!room) return true;
+  const ids = peers.map(p => p.peer).filter(Boolean).sort(); const me = peers.find(p => p.sameTab);
+  return !me || !ids.length || ids[0] === me.peer;
+}
+let hostBusy = false;
+async function hostTick(){
+  if (!db || !online || !waterLoaded || hostBusy || !amHost()) return;
+  hostBusy = true;
+  try {
+    const r = integrate(now());
+    const { hard, wcAt, wcPct, ...computed } = r.w;   // never overwrite the viewers' own buttons
+    water = { ...water, ...computed };
+    await db.doc("water/main").update(computed).catch(() => db.doc("water/main").set({ ...WDEF, ...r.w }));
+    for (const id in r.changes){ Object.assign(fishData[id] || {}, r.changes[id]); await db.doc("fish/" + id).update(r.changes[id]).catch(() => {}); }
+    for (const b of r.births) await db.doc("fish/" + b.id).set(b.f).catch(() => {});
+    for (const e of r.events){
+      const nm = id => (fishData[id] || deadFish[id] || {}).name || "Bir balık";
+      if (e[0] === "sick") sysLog(`${nm(e[1])} beyaz nokta hastalığına yakalandı. İlaç verip suyu 28°C'ye çıkarın.`);
+      if (e[0] === "cured") sysLog(`${nm(e[1])} iyileşti.`);
+      if (e[0] === "dead") sysLog(`${nm(e[1])} öldü. Su değerlerini kontrol edin.`);
+      if (e[0] === "gravid") sysLog(`${nm(e[1])} hamile! Yaklaşık 3 gün sonra yavrulayacak.`);
+      if (e[0] === "birth") sysLog(`${nm(e[1])} ${e[2]} yavru doğurdu!`);
+      if (e[0] === "wc") sysLog(`Suyun %${e[1]}'i değiştirildi.`);
+    }
+  } catch (e) { console.warn("bio", e); }
+  hostBusy = false; renderWater(); renderSel(); renderList();
+}
+function sysLog(text){ const item = { by: "sys", kind: "bio", text, at: now() }; if (db) db.collection("log").add(item).catch(()=>{}); else { logItems.unshift(item); renderLog(); } }
+// local preview of the water between host writes, so the numbers move for everyone
+function waterNow(){ if (!waterLoaded) return water; return integrate(now()).w; }
+
+// ---------- water test panel ----------
+const KIT = { nh3: [[0,"#f2e27a"],[0.25,"#d6e07a"],[0.5,"#b7d27a"],[1,"#8fc27a"],[2,"#5fa877"],[4,"#3f8f6e"]],
+  no2: [[0,"#8fd7e8"],[0.25,"#b9a9e0"],[0.5,"#c98fd8"],[1,"#c46fc8"],[2,"#b04fb0"],[5,"#8f2f96"]],
+  no3: [[0,"#f6e07a"],[5,"#f6b86a"],[10,"#f29a5c"],[20,"#e8774e"],[40,"#d6503e"],[80,"#b03030"]] };
+function kitColor(k, v){ const s = KIT[k]; let c = s[0][1]; for (const [x, col] of s) if (v >= x) c = col; return c; }
+function renderWater(){
+  if (!$("wNh3")) return;
+  const w = waterNow(), T = waterTemp(), O2 = oxygen(T, Object.keys(fishData).length), ph = phOf(w.no3);
+  const set = (id, val, unit, k, bad, warn) => { $(id).textContent = val + unit; const chip = $(id + "c"); if (chip) chip.style.background = k ? kitColor(k, parseFloat(val)) : "transparent";
+    $(id).parentElement.dataset.state = bad ? "bad" : warn ? "warn" : "ok"; };
+  set("wNh3", w.nh3.toFixed(2), " ppm", "nh3", w.nh3 > 0.25, w.nh3 > 0.05);
+  set("wNo2", w.no2.toFixed(2), " ppm", "no2", w.no2 > 0.5, w.no2 > 0.1);
+  set("wNo3", Math.round(w.no3) + "", " ppm", "no3", w.no3 > 60, w.no3 > 40);
+  set("wPh", ph.toFixed(1), "", null, ph < 6.4, ph < 6.8);
+  set("wO2", O2.toFixed(1), " mg/L", null, O2 < 4, O2 < 5);
+  set("wBac", Math.round((w.bac1 + w.bac2)*50) + "", "%", null, w.bac1 < 0.3, w.bac1 < 0.6);
+  const msgs = [];
+  if (w.nh3 > 0.25) msgs.push("Amonyak tehlikeli: hemen su değiştirin ve yemi azaltın.");
+  else if (w.nh3 > 0.05) msgs.push("Amonyak yükseliyor: fazla yem dipte çürüyor olabilir.");
+  if (w.no2 > 0.1) msgs.push("Nitrit var: bakteriler yetişemiyor, filtreyi kapatmayın.");
+  if (w.no3 > 40) msgs.push("Nitrat birikti: %25 su değişimi zamanı.");
+  if (O2 < 5) msgs.push("Oksijen düşük: filtreyi güçlendirin ya da suyu biraz soğutun.");
+  if (filterPow() === 0) msgs.push("Filtre kapalı: faydalı bakteriler ölüyor.");
+  $("wSummary").textContent = msgs.length ? msgs.join(" ") : "Su temiz ve dengeli. Balıklar için ideal.";
+  $("wSummary").dataset.state = msgs.length ? (w.nh3 > 0.25 || w.no2 > 0.5 || O2 < 4 ? "bad" : "warn") : "ok";
+  $("btnHard").textContent = "Zorluk: " + (isHard() ? "Gerçekçi" : "Rahat");
+  $("btnHard").setAttribute("aria-pressed", isHard());
+  const since = water.wcAt ? Math.floor((now() - water.wcAt)/86400e3) : null;
+  $("wcNote").textContent = since === null ? "Henüz su değiştirilmedi." : since === 0 ? "Su bugün değiştirildi." : `Son su değişimi ${since} gün önce.`;
+}
 
 let plantedOnce = false;
 function renderTech(){
@@ -1697,6 +1873,13 @@ $("heatT").onchange = () => { const v = +$("heatT").value; setHeat({ heatT: v })
 $("heatOn").onclick = () => { const on = tank.heatOn === false; setHeat({ heatOn: on }); addLog("heat", on ? "ısıtıcıyı açtı" : "ısıtıcıyı kapattı"); };
 $("filterP").oninput = () => { tank.filter = +$("filterP").value/100; $("filterPv").textContent = $("filterP").value + "%"; };
 $("filterP").onchange = () => { saveTank({ filter: +$("filterP").value/100 }); addLog("filter", `filtreyi %${$("filterP").value} güce ayarladı`); renderTech(); };
+document.querySelectorAll("[data-sex]").forEach(b => b.onclick = () => { newSex = b.dataset.sex; document.querySelectorAll("[data-sex]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+$("btnWc").onclick = () => { if (!db){ water.no3 *= 0.75; water.nh3 *= 0.75; water.no2 *= 0.75; water.wcAt = now(); renderWater(); return; }
+  const at = now(); water.wcAt = at; water.wcPct = 25; db.doc("water/main").update({ wcAt: at, wcPct: 25 }).catch(()=>{}); addLog("wc", "suyun %25'ini değiştirdi"); showBanner("Su değiştirildi, değerler birazdan düşecek"); setTimeout(hostTick, 1500); };
+$("btnHard").onclick = () => { const hard = !isHard(); water.hard = hard; if (db) db.doc("water/main").update({ hard }).catch(()=>{}); addLog("hard", hard ? "zorluğu Gerçekçi yaptı" : "zorluğu Rahat yaptı"); renderWater(); };
+$("selMed").onclick = () => { const f = fishData[selected]; if (!f) return; if ((tank.pearls||0) < 5){ showBanner("İlaç için 5 inci lazım"); return; }
+  addPearls(-5); f.medAt = now(); queueWrite("fish/" + selected, { medAt: f.medAt }); addLog("med", `${f.name}'e ilaç verdi`); renderSel(); };
+setInterval(renderWater, 3000);
 $("btnFert").onclick = () => { saveTank({ fert: (tank.fert||0) + 1, fertAt: now() }); addLog("fert", "bitkilere gübre verdi"); bubbles(0.2); renderTech(); };
 setInterval(renderTech, 1000);
 
@@ -1722,12 +1905,12 @@ window.__AQ = { hash, TOP, SAND: () => SAND, tank: () => tank, fishData: () => f
 renderList(); renderHud();
 (async () => {
   const c = window.claude;
-  if (!c || !c.use){ goLocal("Örnek akvaryum: ortak bağlantı henüz kurulmadı, değişiklikler saklanmaz."); return; }
+  if (!c || !c.use){ goLocal("Örnek akvaryum: ortak bağlantı kurulamadı, değişiklikler saklanmaz."); return; }
   const [d, r, u] = await Promise.all([c.use("db"), c.use("room"), c.use("user")]);
   user = u; room = r;
   if (u){ try { myId = await u.id(); } catch(e){} }
   if (room) setupRoom();
-  if (!d){ goLocal("Örnek akvaryum: ortak bağlantı henüz kurulmadı, değişiklikler saklanmaz."); return; }
+  if (!d){ goLocal("Örnek akvaryum: ortak bağlantı kurulamadı, değişiklikler saklanmaz."); return; }
   db = d;
   if (window.AQ_SEED) window.AQ_SEED();
   const timer = setTimeout(() => goLocal("Kayda bağlanılamadı; şimdilik örnek akvaryum gösteriliyor."), 10000);
@@ -1743,7 +1926,9 @@ renderList(); renderHud();
   db.collection("fish").onSnapshot(qs => {
     clearTimeout(timer); online = true;
     const next = {};
-    for (const doc of qs.docs){ const v = doc.data() || {}; if (typeof v.name !== "string" || !v.pattern) continue; next[doc.id] = { name: String(v.name||"Balık").slice(0,18), color: /^#[0-9a-f]{6}$/i.test(v.color) ? v.color : "#ff8a3d", pattern: SPECIES[v.pattern] ? v.pattern : "plain", eaten: +v.eaten||0, size: clamp(+v.size||0.6, 0.5, 2.4), full: clamp(+v.full||0,0,1), fedAt: +v.fedAt||0, born: +v.born||0, lastPet: +v.lastPet||0 }; }
+    for (const doc of qs.docs){ const v = doc.data() || {}; if (typeof v.name !== "string" || !v.pattern) continue; next[doc.id] = { name: String(v.name||"Balık").slice(0,18), color: /^#[0-9a-f]{6}$/i.test(v.color) ? v.color : "#ff8a3d", pattern: SPECIES[v.pattern] ? v.pattern : "plain", eaten: +v.eaten||0, size: clamp(+v.size||0.6, 0.3, 2.4), full: clamp(+v.full||0,0,1), fedAt: +v.fedAt||0, born: +v.born||0, lastPet: +v.lastPet||0,
+      health: v.health == null ? 100 : clamp(+v.health, 0, 100), sick: !!v.sick, sickAt: +v.sickAt||0, medAt: +v.medAt||0, gravidAt: +v.gravidAt||0, dead: !!v.dead, diedAt: +v.diedAt||0 }; }
+    deadFish = {}; for (const id in next) if (next[id].dead){ deadFish[id] = next[id]; delete next[id]; }
     fishData = next;
     if (selected && !fishData[selected]) selected = null;
     $("sub").textContent = "Birlikte besleyin, birlikte büyütün.";
@@ -1757,6 +1942,9 @@ renderList(); renderHud();
     if (document.activeElement !== $("surpriseText")) $("surpriseText").value = surprise.text;
     maybeAutoReveal();
   }, () => {});
+  db.doc("water/main").onSnapshot(s => { const v = s.exists ? s.data() : null; water = { ...WDEF, ...(v || {}), at: v ? +v.at || now() : now() }; waterLoaded = true; renderWater(); }, () => {});
+  db.collection("feed").onSnapshot(qs => { feedTotals = {}; for (const d of qs.docs){ const v = d.data() || {}; feedTotals[d.id] = +v.dropped || 0; } if (myId && feedTotals[myId] != null) myDropped = Math.max(myDropped, feedTotals[myId]); }, () => {});
+  setTimeout(hostTick, 6000); setInterval(hostTick, 60000);
   db.collection("log").orderBy("at","desc").limit(20).onSnapshot(qs => {
     logItems = qs.docs.map(d => d.data() || {}); renderLog();
   }, () => {});
@@ -1957,7 +2145,7 @@ const api = {
       const hs = Math.hypot(o.vel.x, o.vel.z);
       if (hs > 0.05){ const want = Math.atan2(-o.vel.z, o.vel.x); let dh = want - o.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); o.heading += dh*Math.min(1, dt*3); }
       o.grp.rotation.y = o.heading; o.grp.rotation.z = clamp(Math.atan2(o.vel.y, hs + 0.1), -0.5, 0.5)*0.8;
-      const L = (SPEC_LEN[f.pattern] || 1.7)*(0.72 + clamp(f.size || 0.6, 0.5, 2.4)*0.36)*(1 + s.gulp*0.08); o.mesh.scale.setScalar(L);
+      const L = (SPEC_LEN[f.pattern] || 1.7)*(0.72 + clamp(f.size || 0.6, 0.3, 2.4)*0.36)*(1 + s.gulp*0.08); o.mesh.scale.setScalar(L);
       o.uniforms.uPhase.value = s.phase; o.uniforms.uAmp.value = B.COMM[f.pattern]?.shrimp ? 0.01 : 0.05 + Math.min(0.08, Math.hypot(s.vx, s.vy)*0.9);
       tmp.set(X, Y, Z); const sc = toScreen(tmp); tmp.set(X, Y + L*0.25, Z); const sc2 = toScreen(tmp);
       screen[id] = { x: sc.x, y: sc.y, L: Math.abs(sc2.y - sc.y)*4*(camera.aspect >= 1 ? 1/camera.aspect : 1) };
