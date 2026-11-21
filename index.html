@@ -48,7 +48,7 @@ h1 span{color:var(--coral)}
 @media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
 .tankcol{display:flex;flex-direction:column;gap:10px;min-width:0}
 .tank{position:relative;width:100%;max-width:100%;aspect-ratio:16/10;border-radius:18px;overflow:hidden;
-  border:6px solid #2b4f66;box-shadow:0 0 0 2px #0a1622,0 20px 50px #0008, inset 0 0 0 1px #fff2;touch-action:manipulation;cursor:crosshair}
+  border:6px solid #2b4f66;box-shadow:0 0 0 2px #0a1622,0 20px 50px #0008, inset 0 0 0 1px #fff2;touch-action:none;cursor:crosshair}
 @media (max-width:620px){.tank{aspect-ratio:4/5}}
 .tank canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .hint{position:absolute;left:12px;bottom:10px;font-size:12px;background:#0b1d2acc;border-radius:999px;padding:4px 10px;color:var(--foam);pointer-events:none}
@@ -98,6 +98,8 @@ input[type=text]{font:inherit;color:var(--foam);background:var(--abyss);border:1
 .empty{color:var(--mist);font-size:13.5px}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
 .note{font-size:12px;color:var(--mist)}
+.camctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.camctl button{padding:6px 11px;min-width:40px;justify-content:center}
 .techgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
 .tcell{display:flex;flex-direction:column;gap:6px;min-width:0}
 .tlabel{font-size:12px;color:var(--mist);font-weight:700}
@@ -187,6 +189,13 @@ textarea{font:inherit;color:var(--foam);background:var(--abyss);border:1px solid
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="primary" id="btnWc">%25 su değiştir</button><span class="note" id="wcNote"></span></div>
         <span class="note">Balıklar amonyak üretir, faydalı bakteriler onu nitrite, sonra nitrata çevirir. Yenmeyen yem dipte çürür. Nitratı su değişimi ve bitkiler düşürür.</span>
       </section>
+      <div class="camctl" role="group" aria-label="Kamera">
+        <span class="tlabel">Kamera</span>
+        <button id="camL" aria-label="Sola döndür">◀</button><button id="camR" aria-label="Sağa döndür">▶</button>
+        <button id="camTop">Yukarıdan</button><button id="camFront">Önden</button>
+        <button id="camIn" aria-label="Yakınlaştır">+</button><button id="camOut" aria-label="Uzaklaştır">−</button>
+        <span class="note">Parmakla sürükle, iki parmakla yakınlaştır.</span>
+      </div>
       <div class="status">
         <span class="meter">Cam temizliği <span class="bar" id="cleanBar"><i></i></span> <b id="cleanPct">100%</b></span>
         <span id="tankMood"></span>
@@ -350,16 +359,17 @@ function ensureSim(id){
 const writes = {};
 function queueWrite(path, patch, mode){
   if (!db) return;
-  const w = writes[path] || (writes[path] = { pending:null, busy:false, mode });
-  w.pending = Object.assign(w.pending || {}, patch); w.mode = mode || w.mode;
+  const w = writes[path] || (writes[path] = { pending:null, busy:false, set:false });
+  if (mode === "set"){ w.pending = { ...(w.pending || {}), ...patch }; w.set = true; }
+  else w.pending = Object.assign(w.pending || {}, patch);
   flush(path);
 }
 async function flush(path){
   const w = writes[path]; if (!w || w.busy || !w.pending) return;
-  const data = w.pending; w.pending = null; w.busy = true;
+  const data = w.pending, asSet = w.set; w.pending = null; w.set = false; w.busy = true;
   try {
     const ref = db.doc(path);
-    if (w.mode === "set") await ref.set(data); else await ref.update(data);
+    if (asSet) await ref.set(data); else await ref.update(data);
   } catch(e){ console.warn("yazılamadı", path, e && e.code); }
   w.busy = false;
   if (w.pending) setTimeout(() => flush(path), 350);
@@ -653,12 +663,12 @@ const COMM = {
   b_apple:    { n:"Dev elma salyangozu", fact:"Yumruk büyüklüğünde dev bir salyangoz. Bitkileri kemirir, bitkiler daha yavaş büyür. 120 L tank ister.", big:2, load:2, inv:true, bottom:true, speed:0.01, y:0.2, dot:"#8a7a4a" },
   b_discus:   { n:"Discus", fact:"Akvaryumların kralı. 300 L tank ve 28–30°C sıcak su ister; soğuk suda hastalanır.", big:3, load:3, hot:true, dot:"#3fa8c8" },
   b_stingray: { n:"Motoro tatlı su vatozu", fact:"Dipte süzülen dev bir vatoz. 300 L tank ister, çok kirletir; yavruları, neonları ve karidesleri avlayabilir.", big:3, load:6, bottom:true, flat:true, speed:0.035, y:0.1, dot:"#7a5a3a" },
-  e_frog:     { n:"Afrika cüce kurbağası", fact:"Tamamen suda yaşayan minik kurbağa. Nefes almak için arada yüzeye çıkar. Lepistesle uyumlu.", exo:true, bottom:true, surface:true, speed:0.04, y:0.15, load:0.8, dot:"#6b6a3e" },
+  e_frog:     { n:"Afrika cüce kurbağası", fact:"Tamamen suda yaşayan minik kurbağa. Nefes almak için arada yüzeye çıkar. Lepistesle uyumlu.", exo:true, legged:true, bottom:true, surface:true, speed:0.04, y:0.15, load:0.8, dot:"#6b6a3e" },
   e_betta:    { n:"Beta balığı (erkek)", fact:"Dev yüzgeçli savaşçı balık. Erkek lepisteslerin renkli yüzgeçlerini ısırabilir, onları strese sokar.", exo:true, dot:"#2a4ab8" },
   e_puffer:   { n:"Cüce balon balığı", fact:"Dünyanın en küçük balon balığı. Salyangozları avlar, yüzgeç de ısırabilir.", exo:true, dot:"#c8c060" },
   e_hill:     { n:"Hillstream loach", fact:"Minyatür bir vatoza benzer, taşlara yapışır. Serin ve akıntılı su sever; 26°C üstünde zorlanır.", exo:true, bottom:true, flat:true, cool:true, speed:0.03, y:0.06, dot:"#7a6a4a" },
   e_glass:    { n:"Cam kedi balığı", fact:"Vücudu tamamen şeffaf, kemikleri görünür. Sürü halinde yaşar. 120 L tank ister.", exo:true, big:2, school2:true, dot:"#d8e0e0" },
-  e_axolotl:  { n:"Aksolotl", fact:"Gülümseyen Meksika semenderi. SOĞUK su ister (16–22°C); lepistesler ise 22°C altında üşür. Zor bir denge! 120 L tank ister.", exo:true, big:2, bottom:true, cold:true, speed:0.02, y:0.2, load:2.5, dot:"#f0b0c0" },
+  e_axolotl:  { n:"Aksolotl", fact:"Gülümseyen Meksika semenderi. SOĞUK su ister (16–22°C); lepistesler ise 22°C altında üşür. Zor bir denge! 120 L tank ister.", exo:true, legged:true, big:2, bottom:true, cold:true, speed:0.02, y:0.2, load:2.5, dot:"#f0b0c0" },
   e_butterfly:{ n:"Kelebek balığı", fact:"Yüzeyde yaşar, kanat gibi göğüs yüzgeçleri var. Küçük balıkları yiyebilir. 120 L tank ister.", exo:true, big:2, surface2:true, load:1.5, dot:"#8a7a5a" },
   e_elephant: { n:"Fil burunlu balık", fact:"Hortum gibi çenesiyle kumu yoklar, zayıf bir elektrik alanıyla yön bulur. 300 L tank ister.", exo:true, big:3, bottom:true, speed:0.035, y:0.3, load:2.5, dot:"#3a3028" },
   e_bichir:   { n:"Bikir (dinozor balığı)", fact:"Dinozor çağından kalma ilkel bir balık; ciğerle hava da solur. Küçük balıkları ve karidesleri yer. 300 L tank ister.", exo:true, big:3, bottom:true, eel:true, speed:0.03, y:0.2, load:3, dot:"#8a7a50" },
@@ -1465,7 +1475,8 @@ function step(){
       else if (C && C.surface2){ const w = wanderTarget(id, t); tx = w.x; ty = TOP + 0.015; sp = 0.06; }
       else if (C && C.school2){ const w = wanderTarget("glass-school", t); tx = w.x + (hash(id+"sx")-0.5)*0.12; ty = w.y + (hash(id+"sy")-0.5)*0.08; sp = 0.06; }
       else if (C && C.sessile){ tx = 0.12 + 0.76*hash(id+"cx"); ty = SAND - 0.02; sp = 0.004; }
-      else if (bottom){ const w = wanderTarget(id, t*(C.speed && C.speed < 0.02 ? 0.25 : 0.6)); tx = w.x; ty = SAND - 0.025 - 0.015*hash(id+"b"); sp = C.speed || (C.shrimp ? 0.025 : 0.05); }
+      else if (bottom){ const w = wanderTarget(id, t*(C.speed && C.speed < 0.02 ? 0.25 : 0.6)); tx = w.x; ty = SAND - 0.025 - 0.015*hash(id+"b"); sp = C.speed || (C.shrimp ? 0.025 : 0.05);
+        if (C.legged && ((t/1000 + hash(id)*10) % 7) > 2.6) sp = 0; }
       else if (C && C.school){ const w = wanderTarget("neon-school", t); tx = w.x + (hash(id+"sx")-0.5)*0.12; ty = w.y + (hash(id+"sy")-0.5)*0.08; sp = 0.08; }
       else { const w = wanderTarget(id, t); tx = w.x; ty = w.y; }
     }
@@ -1562,7 +1573,17 @@ function fishAt(px, py){
 let lastDrop = 0;
 let pd = null;
 tankEl.addEventListener("pointerdown", e => { pd = { x: e.clientX, y: e.clientY, m: 0 }; if (!window.AQ3D?.ready) act(e); });
-tankEl.addEventListener("pointermove", e => { if (!pd || !window.AQ3D?.ready) return; const dx = e.clientX - pd.x, dy = e.clientY - pd.y; pd.m += Math.abs(dx) + Math.abs(dy); pd.x = e.clientX; pd.y = e.clientY; if (pd.m > 6) window.AQ3D.drag(dx, dy); });
+tankEl.addEventListener("pointermove", e => { if (!pd || !window.AQ3D?.ready || touches.size >= 2) return; const dx = e.clientX - pd.x, dy = e.clientY - pd.y; pd.m += Math.abs(dx) + Math.abs(dy); pd.x = e.clientX; pd.y = e.clientY; if (pd.m > 6) window.AQ3D.drag(dx, dy); });
+const touches = new Map(); let pinchD = 0;
+tankEl.addEventListener("pointerdown", e => { touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (touches.size === 2){ const [a, b] = [...touches.values()]; pinchD = Math.hypot(a.x - b.x, a.y - b.y); if (pd) pd.m = 99; } });
+tankEl.addEventListener("pointermove", e => { if (!touches.has(e.pointerId)) return; touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (touches.size === 2 && window.AQ3D?.ready){ const [a, b] = [...touches.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinchD) window.AQ3D.zoom(pinchD/d); pinchD = d; } });
+window.addEventListener("pointerup", e => { touches.delete(e.pointerId); if (touches.size < 2) pinchD = 0; });
+window.addEventListener("pointercancel", e => { touches.delete(e.pointerId); pd = null; });
+tankEl.addEventListener("wheel", e => { if (!window.AQ3D?.ready) return; e.preventDefault(); window.AQ3D.zoom(e.deltaY > 0 ? 1.08 : 0.93); }, { passive: false });
+const cam = (id, fn) => { $(id).onclick = () => { if (window.AQ3D?.ready) fn(window.AQ3D); }; };
+cam("camL", A => A.view("left")); cam("camR", A => A.view("right")); cam("camTop", A => A.view("top")); cam("camFront", A => A.view("front"));
+cam("camIn", A => A.zoom(0.85)); cam("camOut", A => A.zoom(1.15));
 window.addEventListener("pointerup", e => { if (pd && window.AQ3D?.ready && pd.m <= 6 && tankEl.contains(e.target)) act(e); pd = null; });
 function act(e){
   let p = rel(e), ck, hit = null; const scr = { x: p.x, y: p.y };
@@ -2176,7 +2197,7 @@ const NB = 400, bPos = new Float32Array(NB*3), bGeo = new THREE.BufferGeometry()
 scene.add(new THREE.Points(bGeo, new THREE.PointsMaterial({ map: dot, size: 0.09, transparent: true, depthWrite: false, opacity: 0.8 })));
 
 // ---------- camera ----------
-let yaw = 0, pitch = 0.04, tyaw = 0, tpitch = 0.04;
+let yaw = 0, pitch = 0.04, tyaw = 0, tpitch = 0.04, zoomK = 1, tzoom = 1;
 function resize(){ const r = tankEl.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width/r.height; camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(tankEl); resize();
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), tmp = new THREE.Vector3(), proj = new THREE.Vector3();
@@ -2186,7 +2207,9 @@ function toScreen(v){ proj.copy(v).project(camera); return { x: (proj.x + 1)/2, 
 let lastT = performance.now();
 const api = {
   ready: true,
-  drag(dx, dy){ tyaw = clamp(tyaw - dx*0.004, -0.6, 0.6); tpitch = clamp(tpitch + dy*0.002, -0.08, 0.3); },
+  drag(dx, dy){ tyaw = clamp(tyaw - dx*0.007, -1.25, 1.25); tpitch = clamp(tpitch + dy*0.004, -0.06, 0.6); },
+  zoom(f){ tzoom = clamp(tzoom*f, 0.5, 1.3); },
+  view(v){ if (v === "front"){ tyaw = 0; tpitch = 0.04; tzoom = 1; } if (v === "left") tyaw = clamp(tyaw - 0.45, -1.25, 1.25); if (v === "right") tyaw = clamp(tyaw + 0.45, -1.25, 1.25); if (v === "top"){ tpitch = 0.55; } },
   screenOf(id){ return screen[id] || null; },
   critScreen(k){ return critScreen[k] || null; },
   pick(cx, cy){
@@ -2203,7 +2226,8 @@ const api = {
     const now = performance.now(), dt = Math.min(0.05, (now - lastT)/1000); lastT = now; U.uTime.value = now/1000;
     const tank = B.tank(), night = tank.light === "night";
     yaw += (tyaw + Math.sin(now/9000)*0.05 - yaw)*Math.min(1, dt*3); pitch += (tpitch - pitch)*Math.min(1, dt*3);
-    const tf = Math.tan(THREE.MathUtils.degToRad(camera.fov/2)), dist = Math.min((TX - 0.4)/tf/camera.aspect, (TY/2 + 0.1)/tf*1.15) + TZ + 0.5;
+    zoomK += (tzoom - zoomK)*Math.min(1, dt*4);
+    const tf = Math.tan(THREE.MathUtils.degToRad(camera.fov/2)), dist = (Math.min((TX - 0.4)/tf/camera.aspect, (TY/2 + 0.1)/tf*1.15) + TZ + 0.5)*zoomK;
     camera.position.set(Math.sin(yaw)*dist, TY*0.52 + Math.sin(pitch)*dist, Math.cos(yaw)*dist); camera.lookAt(0, TY*0.48, 0); camera.updateMatrixWorld();
     sun.intensity += ((night ? 0.45 : 2.0) - sun.intensity)*dt*2; U.uCausticK.value += ((night ? 0.12 : 1) - U.uCausticK.value)*dt*2;
     scene.fog.color.lerp(night ? NIGHT : WATER, dt*2); scene.background.copy(scene.fog.color);
@@ -2227,11 +2251,12 @@ const api = {
       o.lx = X; o.ly = Y; o.lz = Z; o.grp.position.set(X, Y, Z);
       const hs = Math.hypot(o.vel.x, o.vel.z);
       if (hs > 0.05){ const want = Math.atan2(-o.vel.z, o.vel.x); let dh = want - o.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); o.heading += dh*Math.min(1, dt*3); }
-      o.grp.rotation.y = CI?.front ? Math.sin(t/3000 + hash(id)*6)*0.25 : CI?.sessile ? hash(id)*1.2 - 0.6 : o.heading; o.grp.rotation.z = CI?.inv ? 0 : clamp(Math.atan2(o.vel.y, hs + 0.1), -0.5, 0.5)*0.8;
+      if (CI?.legged && hs > 0.02){ const want = Math.atan2(-o.vel.z*0.25, o.vel.x); let dh = want - o.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); o.heading += dh*Math.min(1, dt*1.5); }
+      o.grp.rotation.y = CI?.front ? Math.sin(t/3000 + hash(id)*6)*0.25 : CI?.sessile ? hash(id)*1.2 - 0.6 : o.heading; o.grp.rotation.z = CI?.inv || CI?.legged ? 0 : clamp(Math.atan2(o.vel.y, hs + 0.1), -0.5, 0.5)*0.8;
       const lvl = Math.max(1, Math.min(3, B.tank().size || 1)), tankK = [1, 0.84, 0.7][lvl - 1];
       const L = (SPEC_LEN[f.pattern] || 1.7)*(0.72 + clamp(f.size || 0.6, 0.3, 2.4)*0.36)*(1 + s.gulp*0.08)*tankK; o.mesh.scale.setScalar(L);
       if (CI?.flat) o.mesh.rotation.x = -Math.PI/2;
-      o.uniforms.uPhase.value = s.phase; o.uniforms.uAmp.value = CI?.eel ? 0.12 : CI?.flat ? 0.04 : CI?.inv ? (CI.shrimp ? 0.008 : 0) : B.COMM[f.pattern]?.shrimp ? 0.01 : 0.05 + Math.min(0.08, Math.hypot(s.vx, s.vy)*0.9);
+      o.uniforms.uPhase.value = s.phase; o.uniforms.uAmp.value = CI?.legged ? (f.pattern === "e_axolotl" ? 0.02 : 0) : CI?.eel ? 0.12 : CI?.flat ? 0.04 : CI?.inv ? (CI.shrimp ? 0.008 : 0) : B.COMM[f.pattern]?.shrimp ? 0.01 : 0.05 + Math.min(0.08, Math.hypot(s.vx, s.vy)*0.9);
       tmp.set(X, Y, Z); const sc = toScreen(tmp); tmp.set(X, Y + L*0.25, Z); const sc2 = toScreen(tmp);
       screen[id] = { x: sc.x, y: sc.y, L: Math.abs(sc2.y - sc.y)*4*(camera.aspect >= 1 ? 1/camera.aspect : 1) };
     }
