@@ -1653,9 +1653,14 @@ function renderSel(){
   $("selState").textContent = st.length ? st.join(" · ") : "Sağlıklı";
   $("selMedRow").hidden = !f.sick;
 }
+let listSig = "";
 function renderList(){
-  const box = $("fishList"); box.textContent = "";
+  const box = $("fishList");
   const ids = Object.keys(fishData).sort((a,b) => (fishData[a].born||0) - (fishData[b].born||0));
+  // rebuild only when something visible changed, so the page and open pickers never jump
+  const sig = selected + "|" + ids.map(id => { const f = fishData[id]; return [id, f.name, f.pattern, Math.round((f.health ?? 100)/5), f.sick ? 1 : 0, f.gravidAt ? 1 : 0, Math.round((f.size||0.6)*10)].join(","); }).join(";") + "|" + Object.keys(deadFish).join(",");
+  if (sig === listSig && box.childElementCount){ updateAddNote(); return; }
+  listSig = sig; box.textContent = "";
   if (!ids.length){ const d = document.createElement("div"); d.className = "empty"; d.textContent = "Akvaryum boş. Aşağıdan ilk balığınızı ekleyin, ilk ikisi bedava."; box.appendChild(d); }
   for (const id of ids){
     const f = fishData[id], b = document.createElement("button");
@@ -1764,7 +1769,7 @@ function addCost(){ const n = Object.keys(fishData).length; if (n < 2) return 0;
 function updateAddNote(){
   const n = Object.keys(fishData).length, cost = addCost(), max = tankInfo().max;
   const btn = $("newAdd");
-  for (const o of $("newSpecies").querySelectorAll("option[data-base]")){ const need = COMM[o.value]?.big || 0; o.textContent = o.dataset.base + (need > tankLevel() ? ` (${TANKS[need-1].l} L tank gerekir)` : ""); }
+  for (const o of $("newSpecies").querySelectorAll("option[data-base]")){ const need = COMM[o.value]?.big || 0, txt = o.dataset.base + (need > tankLevel() ? ` (${TANKS[need-1].l} L tank gerekir)` : ""); if (o.textContent !== txt) o.textContent = txt; }
   const need = COMM[newPat]?.big || 0;
   if (need > tankLevel()){ btn.disabled = true; $("newNote").textContent = `Bu canlı için önce tankı ${TANKS[need-1].l} litreye büyütün (Akvaryum ekipmanı kartı).`; return; }
   if (n >= max){ btn.disabled = true; $("newNote").textContent = `Tank dolu (${max} canlı). Daha büyük tank alın.`; return; }
