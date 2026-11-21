@@ -317,7 +317,8 @@ function sampleTank(){
 
 // ---------- fish logic ----------
 const fullness = f => clamp((f.full ?? 0) - (now() - (f.fedAt ?? 0)) / FULL_MS, 0, 1);
-const cleanness = () => clamp(1 - (now() - (tank.lastCleaned ?? now())) / (DIRTY_MS*(0.6 + filterPow())), 0, 1);
+const algaeEaters = () => Object.values(fishData).filter(f => COMM[f.pattern]?.algae).length;
+const cleanness = () => clamp(1 - (now() - (tank.lastCleaned ?? now())) / (DIRTY_MS*(0.6 + filterPow())*(1 + 0.3*Math.min(4, algaeEaters()))), 0, 1);
 function stage(s){ return s < 0.9 ? "Yavru" : s < 1.4 ? "Genç" : s < 1.9 ? "Yetişkin" : "Dev"; }
 function mood(f){
   if (f.sick) return "Hasta, beyaz nokta var"; if ((f.health ?? 100) < 40) return "Halsiz, su değerlerine bakın";
@@ -637,7 +638,19 @@ const COMM = {
   m_molly:    { n:"Siyah moli", fact:"Lepisteslerin akrabası, barışçıl. 24–28°C.", depth:0.25, len:1.0, base:"#17181d", belly:"#2c2e36", tail:"round", fin:"rgba(28,28,36,0.88)", sail:true, dot:"#2c2e36" },
   c_panda:    { n:"Panda koridoras", fact:"Dipte yaşar, yere düşen yemleri temizler. Grup halinde sever.", depth:0.24, len:0.68, base:"#ece4d8", belly:"#fff8ee", tail:"fork", fin:"rgba(240,235,225,0.5)", marks:"panda", bottom:true, barbels:true, dot:"#ece4d8" },
   s_cherry:   { n:"Red cherry karides", fact:"Yosun ve artıkları temizler, lepistesle sorunsuz yaşar.", shrimp:true, bottom:true, dot:"#e0322a" },
+  i_crab:     { n:"Tay mikro yengeci", fact:"Tamamen suda yaşayan minicik barışçıl bir tatlı su yengeci. Dipteki yem artıklarını toplar. Nadir bulunur.", inv:true, bottom:true, front:true, speed:0.03, y:0.1, dot:"#b9bdb8" },
+  i_cpo:      { n:"Turuncu cüce kerevit", fact:"Küçük ve barışçıl bir kerevit, ama fırsat bulursa yavru balıkları yiyebilir.", inv:true, bottom:true, speed:0.04, y:0.12, dot:"#f08a2a" },
+  i_nerite:   { n:"Zebra nerit salyangozu", fact:"Camdaki yosunu yer, cam daha geç kirlenir. Tatlı suda çoğalmaz.", inv:true, bottom:true, algae:true, speed:0.012, y:0.12, dot:"#c9b04a" },
+  i_assassin: { n:"Suikastçı salyangoz", fact:"Diğer salyangozları avlar! Ramshorn salyangozlarıyla aynı tankta dikkat.", inv:true, bottom:true, speed:0.015, y:0.12, dot:"#d8b040" },
+  i_ramshorn: { n:"Kırmızı ramshorn salyangozu", fact:"Yassı kırmızı kabuklu, yem artıklarını ve yosunu temizler.", inv:true, bottom:true, algae:true, speed:0.012, y:0.1, dot:"#c8402a" },
+  i_amano:    { n:"Amano karidesi", fact:"Şeffaf ve çalışkan bir temizlikçi: yosunu ve artıkları yer.", inv:true, shrimp:true, bottom:true, algae:true, speed:0.05, dot:"#c9d4d0" },
+  i_bamboo:   { n:"Bambu karidesi", fact:"Yelpaze kollarıyla akıntıdan yem süzer. Filtre en az %40 güçte olmalı, yoksa aç kalır.", inv:true, shrimp:true, bottom:true, speed:0.02, filter:true, dot:"#9a6a3a" },
+  i_clam:     { n:"Tatlı su midyesi", fact:"Kuma gömülü yaşar, suyu süzer ve amonyağı biraz azaltır. Yerinden pek kıpırdamaz.", inv:true, bottom:true, sessile:true, y:0.04, dot:"#a89a70" },
 };
+const PRICE = { g_female: 25, t_neon: 15, p_platyred: 20, p_platysun: 20, m_molly: 30, c_panda: 25, s_cherry: 15,
+  i_crab: 40, i_cpo: 60, i_nerite: 20, i_assassin: 30, i_ramshorn: 10, i_amano: 20, i_bamboo: 50, i_clam: 45 };
+const RARE = new Set(["g_cobraleo","g_drachen","g_mosaikrot","g_mosaikgrun","g_pigeon","g_ananas","g_regenbogen","g_moskau","g_flamme"]);
+function basePrice(p){ return PRICE[p] ?? (GUPPY[p] ? (RARE.has(p) ? 45 : 25) : 25); }
 const GUPPY_FACT = "Canlı doğuran, barışçıl bir tatlı su balığı. 22–28°C.";
 function speciesFact(p){ return COMM[p] ? COMM[p].fact : GUPPY[p] ? GUPPY_FACT : "Bu tür lepisteslerle aynı suda yaşamaz; yeni eklenemez."; }
 Object.assign(SPECIES, Object.fromEntries(Object.entries(COMM).map(([k,c]) => [k, c.n])));
@@ -897,7 +910,7 @@ function fishLen(f){ return clamp(f.size||0.6, 0.3, 2.4) * Math.min(W, H*1.5) * 
 function drawFish(f, s, t, id){
   if (sprites[f.pattern]) return drawSprite(f, s, t, id, sprites[f.pattern]);
   const GG = GUPPY[f.pattern]; if (GG) return drawGuppy(f, s, t, id, GG);
-  const CC = COMM[f.pattern]; if (CC) return CC.shrimp ? drawShrimp(f, s, t, id) : drawBasic(f, s, t, id, CC);
+  const CC = COMM[f.pattern]; if (CC && CC.inv && !CC.shrimp) return; if (CC) return CC.shrimp ? drawShrimp(f, s, t, id) : drawBasic(f, s, t, id, CC);
   const L = fishLen(f), col = f.color || "#ff8a3d", sp = f.pattern || "plain";
   const x = s.x*W, y = s.y*H, speed = Math.hypot(s.vx, s.vy);
   const amp = 0.04 + Math.min(0.1, speed*0.7) + s.gulp*0.05;
@@ -1416,11 +1429,12 @@ function step(){
     } else {
       s.flee = null;
       const C = COMM[f.pattern], bottom = C && C.bottom;
-      if (fullness(f) < 0.95 && pellets.length){
+      if (fullness(f) < 0.95 && pellets.length && !(C && C.sessile)){
         let best = 1e9; for (const p of pellets){ if (bottom && p.y < SAND - 0.1) continue; const d = Math.hypot(p.cx - s.x, (p.y - s.y)*0.65); if (d < best){ best = d; target = p; } }
       }
       if (target){ tx = target.cx; ty = target.y; sp = C && C.shrimp ? 0.06 : 0.17; }
-      else if (bottom){ const w = wanderTarget(id, t*0.6); tx = w.x; ty = SAND - 0.025 - 0.015*hash(id+"b"); sp = C.shrimp ? 0.025 : 0.05; }
+      else if (C && C.sessile){ tx = 0.12 + 0.76*hash(id+"cx"); ty = SAND - 0.02; sp = 0.004; }
+      else if (bottom){ const w = wanderTarget(id, t*(C.speed && C.speed < 0.02 ? 0.25 : 0.6)); tx = w.x; ty = SAND - 0.025 - 0.015*hash(id+"b"); sp = C.speed || (C.shrimp ? 0.025 : 0.05); }
       else if (C && C.school){ const w = wanderTarget("neon-school", t); tx = w.x + (hash(id+"sx")-0.5)*0.12; ty = w.y + (hash(id+"sy")-0.5)*0.08; sp = 0.08; }
       else { const w = wanderTarget(id, t); tx = w.x; ty = w.y; }
     }
@@ -1452,11 +1466,11 @@ function eat(id, p){
   pellets = pellets.filter(q => q !== p);
   const f = fishData[id], s = ensureSim(id); s.gulp = 0.35;
   const fu = fullness(f);
-  const patch = { full: Math.min(1, fu + 0.12), fedAt: now(), eaten: (f.eaten||0) + 1, size: Math.min(2.4, (f.size||0.6) + 0.035) };
+  const patch = { full: Math.min(1, fu + 0.12), fedAt: now(), eaten: (f.eaten||0) + 1, size: Math.min(COMM[f.pattern]?.inv ? 1.1 : 2.4, (f.size||0.6) + 0.035) };
   Object.assign(f, patch);
   queueWrite("fish/"+id, patch);
   send("eat", { pid: p.id, fid: id });
-  addPearls(1);
+  if (fu < 0.6) addPearls(1);
   addLog("feed", `${f.name}'i besledi`);
   beep(1000, .08, "square", .03);
   if (selected === id) renderSel();
@@ -1572,7 +1586,7 @@ function renderSel(){
   if (!f) return;
   $("selDot").style.background = fishDot(f);
   if (document.activeElement !== $("selName")) $("selName").value = f.name || "";
-  $("selStage").textContent = stage(f.size||0.6);
+  $("selStage").textContent = (COMM[f.pattern]?.inv ? "Yetişkin" : stage(f.size||0.6));
   $("selSpecies").textContent = SPECIES[f.pattern] || SPECIES.plain;
   $("selSize").textContent = Math.round((f.size||0.6) * 6) + " cm";
   const fu = fullness(f); setBar($("selFullBar"), fu); $("selFull").textContent = Math.round(fu*100) + "%";
@@ -1596,7 +1610,7 @@ function renderList(){
     b.className = "fishrow"; b.setAttribute("aria-current", id === selected);
     const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = fishDot(f);
     const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = f.name;
-    const st = document.createElement("span"); st.className = "st"; st.textContent = stage(f.size||0.6);
+    const st = document.createElement("span"); st.className = "st"; st.textContent = (COMM[f.pattern]?.inv ? "Yetişkin" : stage(f.size||0.6));
     const bar = document.createElement("span"); bar.className = "bar"; bar.style.width = "54px"; bar.title = "Sağlık"; bar.appendChild(document.createElement("i")); setBar(bar, (f.health ?? 100)/100);
     if (f.sick) st.textContent = "Hasta"; else if (f.gravidAt) st.textContent = "Hamile";
     b.append(dot, nm, st, bar); b.onclick = () => select(id);
@@ -1670,11 +1684,12 @@ $("selRemoveYes").onclick = async () => {
 let newColor = COLORS[0], newPat = "g_silberblau", newSex = "m";
 { const sel = $("newSpecies"), og1 = document.createElement("optgroup"), og2 = document.createElement("optgroup");
   og1.label = "Lepistes"; og2.label = "Diğer balıklar";
-  for (const [k, gp] of Object.entries(GUPPY)){ const o = document.createElement("option"); o.value = k; o.textContent = gp.n; og1.appendChild(o); }
-  og2.label = "Lepistesle yaşayabilenler";
-  for (const [k, cm] of Object.entries(COMM)){ const o = document.createElement("option"); o.value = k; o.textContent = cm.n; og2.appendChild(o); }
-  sel.append(og1, og2); sel.value = newPat;
-  sel.onchange = () => { newPat = sel.value; $("newFact").textContent = speciesFact(newPat); };
+  const og0 = document.createElement("optgroup"); og0.label = "Nadir lepistesler";
+  for (const [k, gp] of Object.entries(GUPPY)){ if (k === "g_female") continue; const o = document.createElement("option"); o.value = k; o.textContent = gp.n + " · " + basePrice(k) + " inci"; (RARE.has(k) ? og0 : og1).appendChild(o); }
+  og2.label = "Lepistesle yaşayabilen balıklar"; const og3 = document.createElement("optgroup"); og3.label = "Kabuklular ve yumuşakçalar";
+  for (const [k, cm] of Object.entries(COMM)){ const o = document.createElement("option"); o.value = k; o.textContent = cm.n + " · " + basePrice(k) + " inci"; (cm.inv ? og3 : og2).appendChild(o); }
+  og1.label = "Lepistesler"; sel.append(og1, og0, og2, og3); sel.value = newPat;
+  sel.onchange = () => { newPat = sel.value; $("newFact").textContent = speciesFact(newPat); $("sexSeg").hidden = !GUPPY[newPat]; updateAddNote(); };
   $("newFact").textContent = speciesFact(newPat); }
 const pcv = $("newPreview"), pctx = pcv.getContext("2d"), previewSim = { x:0.5, y:0.5, vx:0.04, vy:0, dir:1, face:1, phase:0, gulp:0, hearts:0 };
 function drawPreview(t){
@@ -1691,14 +1706,14 @@ function drawPreview(t){
 for (const c of COLORS){ const b = document.createElement("button"); b.className = "sw"; b.style.background = c; b.setAttribute("aria-label", "Renk " + c); b.setAttribute("aria-pressed", c === newColor);
   b.onclick = () => { newColor = c; document.querySelectorAll(".sw").forEach(x => x.setAttribute("aria-pressed", x === b)); }; $("newColors").appendChild(b); }
 document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { newPat = b.dataset.pat; document.querySelectorAll("[data-pat]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
-function addCost(){ return Object.keys(fishData).length < 2 ? 0 : FISH_COST; }
+function addCost(){ const n = Object.keys(fishData).length; if (n < 2) return 0; const pat = GUPPY[newPat] && newSex === "f" ? "g_female" : newPat; return Math.round(basePrice(pat)*(1 + 0.08*n)); }
 function updateAddNote(){
   const n = Object.keys(fishData).length, cost = addCost();
   const btn = $("newAdd");
   if (n >= MAX_FISH){ btn.disabled = true; $("newNote").textContent = `Akvaryum dolu (${MAX_FISH} balık).`; return; }
   btn.disabled = cost > (tank.pearls||0);
   btn.textContent = cost ? `Ekle (${cost} inci)` : "Bedava ekle";
-  $("newNote").textContent = cost > (tank.pearls||0) ? `${cost - (tank.pearls||0)} inci daha lazım. Balıkları besleyerek inci kazanın.` : "";
+  $("newNote").textContent = cost > (tank.pearls||0) ? `${cost - (tank.pearls||0)} inci daha lazım. Aç balıkları besleyip tankı sağlıklı tutarak inci kazanın.` : "Tank kalabalıklaştıkça fiyatlar artar.";
 }
 $("newAdd").onclick = () => {
   const n = $("newName").value.trim().slice(0,18) || ["Pamuk","Boncuk","Minnoş","Fıstık","Tarçın","Kuki"][Math.floor(Math.random()*6)];
@@ -1755,15 +1770,19 @@ function integrate(t1){
     const load = live.reduce((a, [,f]) => a + clamp(f.size||0.6, 0.3, 2.4), 0);
     w.nh3 += 0.0025*load*K*h;
     const c1 = Math.min(w.nh3, w.nh3*0.35*w.bac1*fl*h); w.nh3 -= c1; w.no2 += c1;
-    w.nh3 = Math.max(0, w.nh3 - 0.004*g*h);
+    w.nh3 = Math.max(0, w.nh3 - 0.004*g*h - 0.002*live.filter(([,f]) => f.pattern === "i_clam").length*h);
     const c2 = Math.min(w.no2, w.no2*0.3*w.bac2*fl*h); w.no2 -= c2; w.no3 += c2*4;
     w.no3 = Math.max(0, w.no3 - 0.02*g*h);
     w.bac1 = clamp(w.bac1 + (fp > 0 ? 0.015*(1 - w.bac1)*Math.min(1, w.nh3*8 + 0.2) : -0.03*w.bac1)*h, 0.05, 1);
     w.bac2 = clamp(w.bac2 + (fp > 0 ? 0.015*(1 - w.bac2)*Math.min(1, w.no2*8 + 0.2) : -0.03*w.bac2)*h, 0.05, 1);
     const O2 = oxygen(T, live.length), step = Math.floor(t/STEP);
     const maleGuppy = live.some(([,f]) => isGuppy(f) && !isFemale(f) && (f.size||0.6) >= 0.7);
+    const hunters = live.filter(([,f]) => f.pattern === "i_assassin").length, cray = live.filter(([,f]) => f.pattern === "i_cpo").length;
+    if (hunters){ const prey = live.find(([,f]) => f.pattern === "i_ramshorn" && !f.dead); if (prey && hash(prey[0] + ":hunt:" + step) < 0.02*hunters*h){ prey[1].dead = true; prey[1].diedAt = t; prey[1].health = 0; events.push(["eaten", prey[0], "Suikastçı salyangoz"]); } }
+    if (cray){ const fry = live.find(([,f]) => (f.size||0.6) < 0.5 && !f.dead && !COMM[f.pattern]?.inv); if (fry && hash(fry[0] + ":cray:" + step) < 0.01*cray*h){ fry[1].dead = true; fry[1].diedAt = t; fry[1].health = 0; events.push(["eaten", fry[0], "Kerevit"]); } }
     for (const [id, f] of live){
-      const starved = t - (f.fedAt || 0) - FULL_MS*(f.full || 0), s = stressOf(w, T, O2, starved)*K;
+      if (f.dead) continue;
+      const starved = t - (f.fedAt || 0) - FULL_MS*(f.full || 0), s = (stressOf(w, T, O2, starved) + (COMM[f.pattern]?.filter && fp < 0.4 ? 1.2 : 0))*K;
       if (s < 0.5) f.health = Math.min(100, f.health + (fullAt(f, t) > 0.2 ? 1.2 : 0.3)*h); else f.health -= s*h;
       if (!f.sick){ const p = ((s > 1 ? 0.004 : 0) + (T < 23 ? 0.003 : 0))*K; if (p && hash(id + ":ich:" + step) < p*h){ f.sick = true; f.sickAt = t; events.push(["sick", id]); } }
       else { const treated = f.medAt && t - f.medAt < 72*3600e3; f.health -= (treated ? 0.3 : 1.0)*K*h;
@@ -1812,6 +1831,7 @@ async function hostTick(){
       if (e[0] === "dead") sysLog(`${nm(e[1])} öldü. Su değerlerini kontrol edin.`);
       if (e[0] === "gravid") sysLog(`${nm(e[1])} hamile! Yaklaşık 3 gün sonra yavrulayacak.`);
       if (e[0] === "birth") sysLog(`${nm(e[1])} ${e[2]} yavru doğurdu!`);
+      if (e[0] === "eaten") sysLog(`${e[2]}, ${nm(e[1])}'i yedi. Doğa acımasız!`);
       if (e[0] === "wc") sysLog(`Suyun %${e[1]}'i değiştirildi.`);
     }
   } catch (e) { console.warn("bio", e); }
@@ -1873,13 +1893,21 @@ $("heatT").onchange = () => { const v = +$("heatT").value; setHeat({ heatT: v })
 $("heatOn").onclick = () => { const on = tank.heatOn === false; setHeat({ heatOn: on }); addLog("heat", on ? "ısıtıcıyı açtı" : "ısıtıcıyı kapattı"); };
 $("filterP").oninput = () => { tank.filter = +$("filterP").value/100; $("filterPv").textContent = $("filterP").value + "%"; };
 $("filterP").onchange = () => { saveTank({ filter: +$("filterP").value/100 }); addLog("filter", `filtreyi %${$("filterP").value} güce ayarladı`); renderTech(); };
-document.querySelectorAll("[data-sex]").forEach(b => b.onclick = () => { newSex = b.dataset.sex; document.querySelectorAll("[data-sex]").forEach(x => x.setAttribute("aria-pressed", x === b)); });
+document.querySelectorAll("[data-sex]").forEach(b => b.onclick = () => { newSex = b.dataset.sex; document.querySelectorAll("[data-sex]").forEach(x => x.setAttribute("aria-pressed", x === b)); updateAddNote(); });
 $("btnWc").onclick = () => { if (!db){ water.no3 *= 0.75; water.nh3 *= 0.75; water.no2 *= 0.75; water.wcAt = now(); renderWater(); return; }
   const at = now(); water.wcAt = at; water.wcPct = 25; db.doc("water/main").update({ wcAt: at, wcPct: 25 }).catch(()=>{}); addLog("wc", "suyun %25'ini değiştirdi"); showBanner("Su değiştirildi, değerler birazdan düşecek"); setTimeout(hostTick, 1500); };
 $("btnHard").onclick = () => { const hard = !isHard(); water.hard = hard; if (db) db.doc("water/main").update({ hard }).catch(()=>{}); addLog("hard", hard ? "zorluğu Gerçekçi yaptı" : "zorluğu Rahat yaptı"); renderWater(); };
 $("selMed").onclick = () => { const f = fishData[selected]; if (!f) return; if ((tank.pearls||0) < 5){ showBanner("İlaç için 5 inci lazım"); return; }
   addPearls(-5); f.medAt = now(); queueWrite("fish/" + selected, { medAt: f.medAt }); addLog("med", `${f.name}'e ilaç verdi`); renderSel(); };
 setInterval(renderWater, 3000);
+function dailyBonus(){
+  if (!online || !waterLoaded) return;
+  const d = new Date(), day = d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate(); if ((tank.bonusDay || 0) >= day) return;
+  const w = waterNow(), ids = Object.keys(fishData); if (!ids.length) return;
+  if (w.nh3 < 0.05 && w.no2 < 0.1 && w.no3 < 40 && ids.every(id => (fishData[id].health ?? 100) > 70 && !fishData[id].sick)){
+    saveTank({ bonusDay: day, pearls: (tank.pearls||0) + 8 }); sysLog("Günlük bakım ödülü: tank sağlıklı, +8 inci."); showBanner("Günlük bakım ödülü: +8 inci"); }
+}
+setInterval(dailyBonus, 60000); setTimeout(dailyBonus, 12000);
 $("btnFert").onclick = () => { saveTank({ fert: (tank.fert||0) + 1, fertAt: now() }); addLog("fert", "bitkilere gübre verdi"); bubbles(0.2); renderTech(); };
 setInterval(renderTech, 1000);
 
@@ -1919,7 +1947,7 @@ renderList(); renderHud();
     const v = s.exists ? s.data() : null;
     if (v){ tank = { pearls: +v.pearls||0, lastCleaned: +v.lastCleaned||now(), light: v.light === "night" ? "night" : "day",
       filter: v.filter == null ? 0.6 : clamp(+v.filter, 0, 1), heatOn: v.heatOn !== false, heatT: clamp(+v.heatT || 25, 20, 31), heatFrom: +v.heatFrom || 25, heatAt: +v.heatAt || 0,
-      plantedAt: +v.plantedAt || 0, fert: +v.fert || 0, fertAt: +v.fertAt || 0 }; }
+      plantedAt: +v.plantedAt || 0, fert: +v.fert || 0, fertAt: +v.fertAt || 0, bonusDay: +v.bonusDay || 0 }; }
     if (!tank.plantedAt && !plantedOnce){ plantedOnce = true; saveTank({ plantedAt: now() }); }
     renderHud(); renderPeople();
   }, () => {});
@@ -2070,7 +2098,8 @@ const bottle = new THREE.Group();
   bottle.add(paper, glass, neck, cork); bottle.position.set(-2.2, 0.16, 1.9); bottle.rotation.y = 0.5; bottle.userData.crit = "bottle"; scene.add(bottle); }
 
 // ---------- fish meshes follow the shared simulation ----------
-const SPEC_LEN = { t_neon: 0.9, p_platyred: 1.2, p_platysun: 1.2, m_molly: 1.5, c_panda: 1.0, s_cherry: 0.75 };
+const SPEC_LEN = { t_neon: 0.9, p_platyred: 1.2, p_platysun: 1.2, m_molly: 1.5, c_panda: 1.0, s_cherry: 0.75,
+  i_crab: 0.75, i_cpo: 1.15, i_nerite: 0.65, i_assassin: 0.7, i_ramshorn: 0.6, i_amano: 1.0, i_bamboo: 1.2, i_clam: 0.8 };
 const fishObjs = {}, geoCache = {};
 async function ensureFish(id, f){
   if (fishObjs[id] && fishObjs[id].pattern === f.pattern) return fishObjs[id];
@@ -2139,14 +2168,14 @@ const api = {
       if (!o || o.pattern !== f.pattern){ ensureFish(id, f); continue; } if (!o.grp) continue;
       const zt = (hash(id + ":z" + Math.floor(t/8000 + hash(id)*5)) - 0.5)*(o.bottom ? 4.4 : 4.0);
       o.z += (zt - o.z)*Math.min(1, dt*0.35);
-      const X = mapX(s.x), Y = o.bottom ? 0.14 + (B.COMM[f.pattern]?.shrimp ? 0 : 0.08) : mapY(s.y), Z = o.z;
+      const CI = B.COMM[f.pattern], X = mapX(s.x), Y = o.bottom ? (CI?.y ?? (0.14 + (CI?.shrimp ? 0 : 0.08))) : mapY(s.y), Z = CI?.sessile ? (hash(id+"cz") - 0.5)*4 : o.z;
       if (o.lx !== null && dt > 0){ o.vel.set((X - o.lx)/dt, (Y - o.ly)/dt, (Z - o.lz)/dt); }
       o.lx = X; o.ly = Y; o.lz = Z; o.grp.position.set(X, Y, Z);
       const hs = Math.hypot(o.vel.x, o.vel.z);
       if (hs > 0.05){ const want = Math.atan2(-o.vel.z, o.vel.x); let dh = want - o.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); o.heading += dh*Math.min(1, dt*3); }
-      o.grp.rotation.y = o.heading; o.grp.rotation.z = clamp(Math.atan2(o.vel.y, hs + 0.1), -0.5, 0.5)*0.8;
+      o.grp.rotation.y = CI?.front ? Math.sin(t/3000 + hash(id)*6)*0.25 : CI?.sessile ? hash(id)*1.2 - 0.6 : o.heading; o.grp.rotation.z = CI?.inv ? 0 : clamp(Math.atan2(o.vel.y, hs + 0.1), -0.5, 0.5)*0.8;
       const L = (SPEC_LEN[f.pattern] || 1.7)*(0.72 + clamp(f.size || 0.6, 0.3, 2.4)*0.36)*(1 + s.gulp*0.08); o.mesh.scale.setScalar(L);
-      o.uniforms.uPhase.value = s.phase; o.uniforms.uAmp.value = B.COMM[f.pattern]?.shrimp ? 0.01 : 0.05 + Math.min(0.08, Math.hypot(s.vx, s.vy)*0.9);
+      o.uniforms.uPhase.value = s.phase; o.uniforms.uAmp.value = CI?.inv ? (CI.shrimp ? 0.008 : 0) : B.COMM[f.pattern]?.shrimp ? 0.01 : 0.05 + Math.min(0.08, Math.hypot(s.vx, s.vy)*0.9);
       tmp.set(X, Y, Z); const sc = toScreen(tmp); tmp.set(X, Y + L*0.25, Z); const sc2 = toScreen(tmp);
       screen[id] = { x: sc.x, y: sc.y, L: Math.abs(sc2.y - sc.y)*4*(camera.aspect >= 1 ? 1/camera.aspect : 1) };
     }
