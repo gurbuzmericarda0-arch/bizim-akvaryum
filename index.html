@@ -1594,6 +1594,8 @@ function act(e){
   if (hit){ select(hit); pet(hit); return; }
   if (tool === "food"){
     if (now() - lastDrop < 140) return; lastDrop = now();
+    const hungryN = Object.values(fishData).filter(f => fullness(f) < 0.95).length;
+    if (pellets.length >= 6 + hungryN*2){ showBanner(hungryN ? "Tankta yeterince yem var, önce bunları yesinler" : "Balıklar tok! Fazla yem dipte çürüyüp suyu zehirler"); return; }
     if (!Object.keys(fishData).length) return;
     const y = clamp(p.y, 0.04, SAND - 0.05);
     const id = Math.random().toString(36).slice(2,9);
@@ -1827,7 +1829,7 @@ function integrate(t1){
   w.eatenSeen = eaten; w.droppedSeen = dropped;
   if (w.wcAt > (w.wcApplied || 0)){ const k = 1 - clamp(w.wcPct || 25, 5, 60)/100; w.nh3 *= k; w.no2 *= k; w.no3 *= k; w.wcApplied = w.wcAt; events.push(["wc", w.wcPct || 25]); }
   if (n <= 0){ w.at = t1; return { w, changes, births, events }; }
-  const h = (t1 - t0)/3600e3/n, K = isHard() ? 1 : 0.4, fp = filterPow(), g = plantGrowth(), fl = 0.3 + 0.7*fp;
+  const h = (t1 - t0)/3600e3/n, K = isHard() ? 1 : 0.4, fp = filterPow(), g = plantGrowth(), fl = 0.3 + 0.7*fp, catchup = (t1 - t0) > 20*60e3;
   const fish = {}; for (const id in fishData) fish[id] = { ...fishData[id], health: fishData[id].health ?? 100 };
   for (let i=0;i<n;i++){
     const t = t0 + (i + 1)*(t1 - t0)/n, T = tempAtT(t), live = Object.entries(fish).filter(([,f]) => !f.dead);
@@ -1858,7 +1860,7 @@ function integrate(t1){
       if (!f.sick){ const p = ((s > 1 ? 0.004 : 0) + (T < 23 ? 0.003 : 0))*K; if (p && hash(id + ":ich:" + step) < p*h){ f.sick = true; f.sickAt = t; events.push(["sick", id]); } }
       else { const treated = f.medAt && t - f.medAt < 72*3600e3; f.health -= (treated ? 0.3 : 1.0)*K*h;
         if (treated && T >= 27 && t - f.medAt > 24*3600e3){ f.sick = false; f.sickAt = 0; events.push(["cured", id]); } }
-      if (f.health <= 0){ if (isHard()){ f.dead = true; f.diedAt = t; events.push(["dead", id]); continue; } f.health = 15; }
+      if (f.health <= 0){ if (isHard() && !catchup){ f.dead = true; f.diedAt = t; events.push(["dead", id]); continue; } f.health = catchup ? 10 : 15; }
       if (isFemale(f) && (f.size||0.6) >= 0.7){
         if (!f.gravidAt && maleGuppy && f.health > 60 && T >= 23.5 && T <= 28.5 && hash(id + ":gr:" + step) < 0.01*h) { f.gravidAt = t; events.push(["gravid", id]); }
         else if (f.gravidAt && t - f.gravidAt > 3*86400e3){
@@ -1917,6 +1919,9 @@ const KIT = { nh3: [[0,"#f2e27a"],[0.25,"#d6e07a"],[0.5,"#b7d27a"],[1,"#8fc27a"]
   no2: [[0,"#8fd7e8"],[0.25,"#b9a9e0"],[0.5,"#c98fd8"],[1,"#c46fc8"],[2,"#b04fb0"],[5,"#8f2f96"]],
   no3: [[0,"#f6e07a"],[5,"#f6b86a"],[10,"#f29a5c"],[20,"#e8774e"],[40,"#d6503e"],[80,"#b03030"]] };
 function kitColor(k, v){ const s = KIT[k]; let c = s[0][1]; for (const [x, col] of s) if (v >= x) c = col; return c; }
+let weakWarned = 0;
+function warnWeak(){ const weak = Object.values(fishData).filter(f => (f.health ?? 100) < 40); if (weak.length && now() - weakWarned > 10*60e3){ weakWarned = now(); showBanner(`${weak.length} balık çok halsiz! Suyu değiştirin, yemi azaltın`); } }
+setInterval(warnWeak, 20000);
 function renderWater(){
   if (!$("wNh3")) return;
   const w = waterNow(), T = waterTemp(), O2 = oxygen(T, Object.keys(fishData).length), ph = phOf(w.no3);
